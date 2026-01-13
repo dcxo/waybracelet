@@ -1,0 +1,20 @@
+[package]
+name = "iced-test"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chrono = "0.4.42"
+hyprland = "0.4.0-beta.3"
+iced = { version = "0.14.0", features = ["canvas", "tokio"] }
+iced_layershell = "0.14.2"
+lucide-icons = { version = "0.562.0", features = ["iced"] }
+tokio = { version = "1.49.0", features = ["full"] }
+tokio-stream = { version = "0.1.18", features = ["io-util", "sync"] }
+wayland-client = "0.31.12"
+mothscheme = { path = "../mothscheme/rust-lib", features = ["iced"] }
+mpris-async = "0.1.0"
+mpris = "2.0.1"
+
+[features]
+debug = ["iced_layershell/debug"]
