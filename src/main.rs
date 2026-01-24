@@ -1,11 +1,13 @@
+#![warn(unused_extern_crates)]
 #![allow(mismatched_lifetime_syntaxes)]
 
-use chrono::{DateTime, Local};
+use std::iter::{self, chain};
+
+use hyprland::{data::Monitors, shared::HyprData};
 use iced::{
-    Color, Element,
-    Length::Fill,
-    Subscription, Task,
+    Color, Element, Size, Subscription, Task,
     theme::Style,
+    time::Instant,
     widget::{container, space},
     window,
 };
@@ -15,31 +17,35 @@ use iced_layershell::{
     to_layer_message,
 };
 
-use crate::windows::{VolumeOSD, WindowView};
+use crate::{
+    features::{
+        Feature,
+        notifications::{self, Notifications},
+        power_menu::PowerMenu,
+        status_bar::StatusBar,
+        volume_osd::VolumeOSD,
+    },
+    styles::dark_theme,
+    windows::Window,
+};
 
 mod components;
-mod subscriptions;
+mod features;
+mod styles;
 mod windows;
 
 fn main() {
-    let conn = wayland_client::Connection::connect_to_env().unwrap();
     iced_layershell::daemon(Daemon::new, || "Holi".into(), Daemon::update, Daemon::view)
         .subscription(Daemon::subscriptions)
-        .style(|_, __| Style {
+        .theme(|_: &Daemon, _| dark_theme())
+        .style(|_, theme| Style {
             background_color: Color::TRANSPARENT,
-            text_color: Color::BLACK,
+            text_color: theme.palette().text,
         })
         .settings(Settings {
             antialiasing: true,
-            with_connection: Some(conn),
             layer_settings: LayerShellSettings {
-                // anchor: Anchor::Top | Anchor::Left | Anchor::Right,
-                // size: Some((0, 64)),
-                // exclusive_zone: 64,
                 start_mode: StartMode::Background,
-                //TargetScreen("DP-3".to_string()),
-                // layer: Layer::Bottom,
-                // keyboard_interactivity: KeyboardInteractivity::None,
                 ..Default::default()
             },
             ..Default::default()
@@ -51,65 +57,214 @@ fn main() {
 #[to_layer_message(multi)]
 #[derive(Debug, Clone)]
 pub enum Message {
-    CavaInfo(Vec<f32>),
-    UpdateDatetime(DateTime<Local>),
-    UpdateCurrenWorkspace(i32),
-    PlayerState(bool),
+    StatusBar(features::status_bar::StatusBarMessage),
+    PowerMenu(features::power_menu::PowerMenuMessage),
+    VolumeOSD(features::volume_osd::VolumeOsdMessage),
+    Notifications(features::notifications::NotificationsMessage),
+
+    Open(FeatureSelector),
+    Hide(FeatureSelector),
+    Remove(FeatureSelector),
+    ChangeSize(FeatureSelector, Size),
+
+    Animation,
+    ChangeTheme,
+}
+
+#[derive(Debug, Clone)]
+pub enum FeatureSelector {
+    StatusBar,
+    PowerMenu,
+    VolumeOSD,
+    Notifications,
 }
 
 struct Daemon {
-    main_status_bar: windows::Window<windows::StatusBar>,
-    volume_osd: windows::Window<windows::VolumeOSD>,
+    statuses_bar: Vec<Window<StatusBar>>,
+    volume_osd: Window<VolumeOSD>,
+    power_menu: Option<Window<PowerMenu>>,
+    notifications: Option<Window<Notifications>>,
+    now: Instant,
 }
 
 impl Daemon {
     fn new() -> (Self, Task<Message>) {
-        let status_bar = windows::StatusBar::new("DP-3");
-        let (main_status_bar, open_task) = status_bar.open_window();
+        let now = Instant::now();
+        let (volume_osd, volume_open_task) = VolumeOSD::new(now).open();
 
-        let (volume_osd, volume_open_task) = VolumeOSD.open_window();
-        let open_task = open_task.chain(volume_open_task);
+        let (statuses_bar, mut open_tasks) = Monitors::get()
+            .unwrap()
+            .iter()
+            .map(|m| StatusBar::new(m.name.clone(), m.active_workspace.id, now))
+            .map(StatusBar::open)
+            .unzip::<Window<StatusBar>, Task<Message>, Vec<_>, Vec<_>>();
+
+        open_tasks.extend([volume_open_task]);
 
         (
             Self {
-                main_status_bar,
+                statuses_bar,
                 volume_osd,
+                power_menu: None,
+                notifications: None,
+                now,
             },
-            open_task,
+            Task::batch(open_tasks),
         )
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
+        self.set_now();
+
         match message {
-            Message::CavaInfo(info) => {
-                self.main_status_bar.view.cava_info = info;
+            Message::StatusBar(message) => self
+                .statuses_bar
+                .iter_mut()
+                .map(move |sb| sb.update(message.clone()))
+                .fold(Task::none(), |mt, t| mt.chain(t)),
+            Message::VolumeOSD(message) => self.volume_osd.update(message),
+            Message::Notifications(message) => {
+                if let Some(ns) = self.notifications.as_mut() {
+                    ns.update(message)
+                } else {
+                    Task::none()
+                }
+            }
+            Message::PowerMenu(message) => self
+                .power_menu
+                .as_mut()
+                .map(|pm| pm.update(message))
+                .unwrap_or(Task::none()),
+
+            Message::Open(feature) => match feature {
+                FeatureSelector::PowerMenu if self.power_menu.is_none() => {
+                    let (window, open_task) = PowerMenu::new(self.now).open();
+                    self.power_menu.replace(window);
+
+                    open_task
+                }
+                FeatureSelector::Notifications if self.notifications.is_none() => {
+                    let (window, open_task) =
+                        Notifications::new(Default::default(), self.now).open();
+                    self.notifications.replace(window);
+
+                    open_task
+                }
+
+                _ => Task::none(),
+            },
+
+            Message::Hide(feature) => {
+                let id = match feature {
+                    FeatureSelector::PowerMenu => self.power_menu.as_ref().map(|pm| pm.id),
+                    FeatureSelector::Notifications => self.notifications.as_ref().map(|ns| ns.id),
+                    _ => unreachable!(),
+                };
+                if let Some(id) = id {
+                    Task::done(Message::RemoveWindow(id))
+                        .chain(Task::done(Message::Remove(feature)))
+                } else {
+                    Task::none()
+                }
+            }
+            Message::Remove(feature) => {
+                match feature {
+                    FeatureSelector::Notifications => {
+                        self.notifications.take();
+                    }
+                    FeatureSelector::PowerMenu => {
+                        self.power_menu.take();
+                    }
+                    _ => unreachable!(),
+                };
                 Task::none()
             }
-            Message::UpdateDatetime(datetime) => {
-                self.main_status_bar.view.current_datetime = datetime;
-                Task::none()
+
+            Message::ChangeSize(f, s) => {
+                let Some(id) = (match f {
+                    FeatureSelector::Notifications => self.notifications.as_ref().map(|f| f.id),
+                    FeatureSelector::PowerMenu => todo!(),
+                    FeatureSelector::VolumeOSD => todo!(),
+                    FeatureSelector::StatusBar => todo!(),
+                }) else {
+                    return Task::none();
+                };
+
+                Task::done(Message::SizeChange {
+                    id,
+                    size: (s.width as u32, s.height as u32),
+                })
             }
-            Message::UpdateCurrenWorkspace(workspace) => {
-                self.main_status_bar.view.current_worksapce = workspace;
-                Task::none()
-            }
+
             _ => Task::none(),
         }
     }
 
     fn view(&self, window_id: window::Id) -> Element<'_, Message> {
-        match window_id {
-            x if x == self.main_status_bar.id => (&self.main_status_bar.view).into(),
-            x if x == self.volume_osd.id => (&self.volume_osd.view).into(),
-            _ => container(space()).into(),
+        if let Some(window) = self.statuses_bar.iter().find(|sb| sb.id == window_id) {
+            window.view().into()
+        } else if let Some(window) = self.notifications.as_ref().filter(|ns| window_id == ns.id) {
+            window.view().into()
+        } else if window_id == self.volume_osd.id {
+            self.volume_osd.view().into()
+        } else if let Some(window) = self.power_menu.as_ref().filter(|pm| pm.id == window_id) {
+            window.view().into()
+        } else {
+            container(space()).into()
         }
     }
 
     fn subscriptions(&self) -> Subscription<Message> {
-        Subscription::batch([
-            subscriptions::cava_subscription(),
-            subscriptions::clock_subscription(),
-            subscriptions::hyprland_subscription("DP-3"),
-        ])
+        let frames = if self.is_animating() {
+            iced::window::frames().map(|_| Message::Animation)
+        } else {
+            Subscription::none()
+        };
+
+        Subscription::batch(
+            self.statuses_bar
+                .iter()
+                .map(|sb| sb.subscriptions())
+                .chain(self.power_menu.as_ref().map(|pm| pm.subscriptions()))
+                // .chain(self.notifications.as_ref().map(|pm| pm.subscriptions()))
+                .chain(iter::once(
+                    notifications::subscriptions::notifications_subscription(),
+                ))
+                .chain(iter::once(self.volume_osd.subscriptions()))
+                .chain([frames]), // .chain([frames, change_theme_subscription()]),
+        )
+    }
+
+    fn is_animating(&self) -> bool {
+        self.notifications
+            .as_ref()
+            .is_some_and(|ns| ns.is_animating())
+            || self.power_menu.as_ref().is_some_and(|pm| pm.is_animating())
+            || self.statuses_bar.iter().any(|sb| sb.is_animating())
+            || self.volume_osd.is_animating()
+    }
+
+    fn set_now(&mut self) {
+        self.now = Instant::now();
+        self.statuses_bar
+            .iter_mut()
+            .for_each(|sb| sb.set_now(self.now));
+        self.volume_osd.set_now(self.now);
+        self.notifications
+            .as_mut()
+            .iter_mut()
+            .for_each(|ns| ns.set_now(self.now));
+
+        self.power_menu
+            .as_mut()
+            .iter_mut()
+            .for_each(|pm| pm.set_now(self.now));
     }
 }
+
+// fn change_theme_subscription() -> Subscription<Message> {
+//     Subscription::run(|| {
+//         SignalStream::new(signal(SignalKind::user_defined1()).unwrap())
+//             .map(|_| Message::ChangeTheme)
+//     })
+// }

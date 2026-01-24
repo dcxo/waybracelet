@@ -1,42 +1,39 @@
-use chrono::{DateTime, Local};
 use iced::{
     Alignment::Center,
-    Element, Font,
-    Length::Fill,
-    font::{Family, Stretch, Style, Weight},
-    widget::{center, column, text},
+    Element,
+    Length::{self},
+    widget::{Container, container, space},
 };
 
-pub mod beads;
-mod styles;
-pub mod waves_player;
+use crate::styles;
 
-const BLACK_FONT: Font = Font {
-    family: Family::SansSerif,
-    weight: Weight::Black,
-    stretch: Stretch::Normal,
-    style: Style::Normal,
-};
-
-pub fn workspace<'a, T: 'a>(workspace: i32) -> impl Into<Element<'a, T>> {
-    beads::bead_center(text!("{}", workspace).font(BLACK_FONT).size(24)).width(56)
+pub struct BeadsChord {
+    pub length: Length,
 }
 
-fn clock_text<'a, T: 'a>(datetime: &DateTime<Local>, format: &str) -> impl Into<Element<'a, T>> {
-    text!("{}", datetime.format(format))
-        .align_x(Center)
-        .width(Fill)
-        .font(BLACK_FONT)
+impl BeadsChord {
+    pub const FILL: BeadsChord = BeadsChord {
+        length: Length::Fill,
+    };
+    pub const W24: BeadsChord = BeadsChord {
+        length: Length::Fixed(24.),
+    };
 }
 
-pub fn clock<'a, T: 'a>(datetime: &DateTime<Local>) -> impl Into<Element<'a, T>> {
-    center(
-        column![
-            clock_text(datetime, "%H").into(),
-            clock_text(datetime, "%M").into(),
-        ]
-        .spacing(-2.),
-    )
-    .width(56)
-    .height(56)
+impl<'a, T: 'a> From<BeadsChord> for Element<'a, T> {
+    fn from(val: BeadsChord) -> Self {
+        container(space())
+            .height(8)
+            .width(val.length)
+            .style(styles::chord_style)
+            .into()
+    }
+}
+
+pub fn bead<'a, T: 'a>(content: impl Into<Element<'a, T>>) -> Container<'a, T> {
+    container(content).style(styles::bead_style).height(56)
+}
+
+pub fn bead_center<'a, T: 'a>(content: impl Into<Element<'a, T>>) -> Container<'a, T> {
+    bead(content).align_y(Center).align_x(Center)
 }
