@@ -155,11 +155,13 @@ pub fn notifications_subscription() -> Subscription<Message> {
                 .await;
 
             loop {
+                if let Ok(event) = rx.recv().await {
+                    let _ = output
+                        .send(Message::Open(FeatureSelector::Notifications))
+                        .await;
+                    let _ = output.send(Message::Notifications(event)).await;
+                }
                 // select! {
-                //     Some(event) = rx.recv() => {
-                //         let _ = output.send(Message::Open(FeatureSelector::Notifications)).await;
-                //         let _ = output.send(Message::Notifications(event)).await;
-                //     },
                 //     Some(event) = rx_id.recv() => {
                 //
                 //     },

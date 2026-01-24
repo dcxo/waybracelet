@@ -201,6 +201,7 @@ impl Daemon {
     }
 
     fn view(&self, window_id: window::Id) -> Element<'_, Message> {
+        dbg!(window_id);
         if let Some(window) = self.statuses_bar.iter().find(|sb| sb.id == window_id) {
             window.view().into()
         } else if let Some(window) = self.notifications.as_ref().filter(|ns| window_id == ns.id) {

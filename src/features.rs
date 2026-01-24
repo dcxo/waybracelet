@@ -19,6 +19,7 @@ pub trait Feature: Sized {
 
     fn open(self) -> (Window<Self>, Task<Message>) {
         let id = window::Id::unique();
+        dbg!(id);
         let settings = self.layer_settings();
 
         (
