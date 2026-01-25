@@ -70,7 +70,7 @@ impl Feature for PowerMenu {
             PowerMenuMessage::Reboot => Self::execute_command(Command::new("reboot")),
             PowerMenuMessage::Suspend => Self::execute_command({
                 let mut cmd = Command::new("systemctl");
-                cmd.arg("hybrid-sleep");
+                cmd.arg("suspend");
                 cmd
             }),
             PowerMenuMessage::Logout => Self::execute_command({
