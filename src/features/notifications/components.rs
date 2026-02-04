@@ -20,10 +20,12 @@ pub fn notification<'a>(
 ) -> Element<'a, Message> {
     let n_notification = notification.notification.clone();
 
-    let actions = Row::from_iter(n_notification.actions.iter().map(|(key, text)| {
-        dbg!(&key, &text);
-        button(value(text).width(Fill).center()).into()
-    }));
+    let actions = Row::from_iter(
+        n_notification
+            .actions
+            .iter()
+            .map(|(key, text)| button(value(text).width(Fill).center()).into()),
+    );
 
     sensor(
         float(
@@ -56,9 +58,6 @@ pub fn notification<'a>(
         }),
     )
     .key(n_notification.id)
-    .on_show(move |s| {
-        dbg!(s);
-        Message::Notifications(NotificationsMessage::PopUp(n_notification.id))
-    })
+    .on_show(move |s| Message::Notifications(NotificationsMessage::PopUp(n_notification.id)))
     .into()
 }

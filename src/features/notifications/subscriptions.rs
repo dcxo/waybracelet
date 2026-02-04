@@ -38,7 +38,7 @@ impl NotificationsManager {
             replaces_id
         };
 
-        let expire_timeout = match dbg!(expire_timeout) {
+        let expire_timeout = match expire_timeout {
             -1 => ExpireTimeout::ServerDefault,
             0 => ExpireTimeout::ManualClosing,
             x => ExpireTimeout::NotificationSpecific(x),

@@ -4,7 +4,7 @@ use iced::window;
 
 use crate::features::Feature;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(super) struct Window<T>
 where
     T: Feature,

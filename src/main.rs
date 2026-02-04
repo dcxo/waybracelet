@@ -1,7 +1,7 @@
 #![warn(unused_extern_crates)]
 #![allow(mismatched_lifetime_syntaxes)]
 
-use std::iter::{self, chain};
+use std::iter;
 
 use hyprland::{data::Monitors, shared::HyprData};
 use iced::{
@@ -16,6 +16,8 @@ use iced_layershell::{
     settings::{LayerShellSettings, StartMode},
     to_layer_message,
 };
+use iced_wayland_subscriber::{OutputInfo, WaylandEvent};
+use wayland_client::Connection;
 
 use crate::{
     features::{
@@ -35,23 +37,34 @@ mod styles;
 mod windows;
 
 fn main() {
-    iced_layershell::daemon(Daemon::new, || "Holi".into(), Daemon::update, Daemon::view)
-        .subscription(Daemon::subscriptions)
-        .theme(|_: &Daemon, _| dark_theme())
-        .style(|_, theme| Style {
-            background_color: Color::TRANSPARENT,
-            text_color: theme.palette().text,
-        })
-        .settings(Settings {
-            antialiasing: true,
-            layer_settings: LayerShellSettings {
-                start_mode: StartMode::Background,
-                ..Default::default()
-            },
+    tracing_subscriber::fmt::init();
+
+    let conn = Connection::connect_to_env().unwrap();
+    let conn2 = conn.clone();
+
+    iced_layershell::daemon(
+        move || Daemon::new(conn.clone()),
+        || "WayBracelet".into(),
+        Daemon::update,
+        Daemon::view,
+    )
+    .subscription(Daemon::subscriptions)
+    .theme(|_: &Daemon, _| dark_theme())
+    .style(|_, theme| Style {
+        background_color: Color::TRANSPARENT,
+        text_color: theme.palette().text,
+    })
+    .settings(Settings {
+        antialiasing: true,
+        with_connection: Some(conn2),
+        layer_settings: LayerShellSettings {
+            start_mode: StartMode::Background,
             ..Default::default()
-        })
-        .run()
-        .unwrap()
+        },
+        ..Default::default()
+    })
+    .run()
+    .unwrap()
 }
 
 #[to_layer_message(multi)]
@@ -67,6 +80,7 @@ pub enum Message {
     Remove(FeatureSelector),
     ChangeSize(FeatureSelector, Size),
 
+    DisplayInserted(OutputInfo),
     Animation,
     ChangeTheme,
 }
@@ -84,32 +98,32 @@ struct Daemon {
     volume_osd: Window<VolumeOSD>,
     power_menu: Option<Window<PowerMenu>>,
     notifications: Option<Window<Notifications>>,
+    connection: Connection,
     now: Instant,
 }
 
 impl Daemon {
-    fn new() -> (Self, Task<Message>) {
+    fn new(connection: Connection) -> (Self, Task<Message>) {
         let now = Instant::now();
         let (volume_osd, volume_open_task) = VolumeOSD::new(now).open();
 
-        let (statuses_bar, mut open_tasks) = Monitors::get()
-            .unwrap()
-            .iter()
-            .map(|m| StatusBar::new(m.name.clone(), m.active_workspace.id, now))
-            .map(StatusBar::open)
-            .unzip::<Window<StatusBar>, Task<Message>, Vec<_>, Vec<_>>();
-
-        open_tasks.extend([volume_open_task]);
+        // let (statuses_bar, mut open_tasks) = Monitors::get()
+        //     .unwrap()
+        //     .iter()
+        //     .map(|m| StatusBar::new(m.name.clone(), m.active_workspace.id, now))
+        //     .map(StatusBar::open)
+        //     .unzip::<Window<StatusBar>, Task<Message>, Vec<_>, Vec<_>>();
 
         (
             Self {
-                statuses_bar,
+                connection,
+                statuses_bar: vec![],
                 volume_osd,
                 power_menu: None,
                 notifications: None,
                 now,
             },
-            Task::batch(open_tasks),
+            volume_open_task,
         )
     }
 
@@ -196,12 +210,35 @@ impl Daemon {
                 })
             }
 
+            Message::DisplayInserted(info) => {
+                let m = Monitors::get()
+                    .unwrap()
+                    .iter()
+                    .find(|m| m.name == info.name)
+                    .map(|m| m.active_workspace.id);
+
+                let (window, task) =
+                    StatusBar::new(info.name, info.wl_output, m.unwrap_or(1), self.now).open();
+
+                let current_status_bar = self
+                    .statuses_bar
+                    .iter_mut()
+                    .find(|sb| sb.output == window.output);
+
+                if let Some(current_status_bar) = current_status_bar {
+                    let _ = std::mem::replace(current_status_bar, window);
+                } else {
+                    self.statuses_bar.push(window);
+                }
+
+                task
+            }
+
             _ => Task::none(),
         }
     }
 
     fn view(&self, window_id: window::Id) -> Element<'_, Message> {
-        dbg!(window_id);
         if let Some(window) = self.statuses_bar.iter().find(|sb| sb.id == window_id) {
             window.view().into()
         } else if let Some(window) = self.notifications.as_ref().filter(|ns| window_id == ns.id) {
@@ -232,7 +269,15 @@ impl Daemon {
                     notifications::subscriptions::notifications_subscription(),
                 ))
                 .chain(iter::once(self.volume_osd.subscriptions()))
-                .chain([frames]), // .chain([frames, change_theme_subscription()]),
+                .chain([
+                    frames,
+                    iced_wayland_subscriber::listen(self.connection.clone())
+                        .filter_map(|event| match event {
+                            WaylandEvent::OutputInsert(oi) => Some(oi),
+                            _ => None,
+                        })
+                        .map(Message::DisplayInserted),
+                ]), // .chain([frames, change_theme_subscription()]),
         )
     }
 

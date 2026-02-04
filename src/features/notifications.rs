@@ -149,7 +149,7 @@ impl Feature for Notifications {
                     .and_then(Into::into)
                 {
                     Task::future(async move {
-                        Timer::after(dbg!(duration)).await;
+                        Timer::after(duration).await;
                         Message::Notifications(NotificationsMessage::Close(id))
                     })
                 } else {

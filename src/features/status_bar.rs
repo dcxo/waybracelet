@@ -12,6 +12,7 @@ use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
 use lucide_icons::iced::icon_box;
+use wayland_client::protocol::wl_output::{self, WlOutput};
 
 use crate::{FeatureSelector, Message, features::Feature};
 
@@ -22,16 +23,23 @@ mod subscriptions;
 pub struct StatusBar {
     now: Instant,
     pub output: String,
+    pub wloutput: WlOutput,
     pub(crate) cava_info: Vec<f32>,
     pub(crate) current_datetime: DateTime<Local>,
     pub(crate) current_workspace: i32,
 }
 
 impl StatusBar {
-    pub fn new(output: impl Into<String>, current_workspace: i32, now: Instant) -> Self {
+    pub fn new(
+        output: impl Into<String>,
+        wloutput: WlOutput,
+        current_workspace: i32,
+        now: Instant,
+    ) -> Self {
         Self {
             now,
             output: output.into(),
+            wloutput,
             cava_info: Vec::with_capacity(12),
             current_datetime: Local::now(),
             current_workspace,
@@ -61,7 +69,7 @@ impl Feature for StatusBar {
             margin: Some((8, 0, 0, 0)),
             exclusive_zone: Some(56),
             keyboard_interactivity: KeyboardInteractivity::None,
-            output_option: OutputOption::OutputName(self.output.clone()),
+            output_option: OutputOption::Output(self.wloutput.clone()),
             ..Default::default()
         }
     }
