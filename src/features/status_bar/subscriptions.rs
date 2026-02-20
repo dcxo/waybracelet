@@ -6,7 +6,7 @@ use hyprland::{
     event_listener::{Event, EventStream},
     shared::HyprData,
 };
-use iced::{Function, Subscription, time};
+use iced::{Function, Subscription, futures::SinkExt, stream::channel, time};
 use smol::{
     io::{AsyncBufRead, AsyncBufReadExt, BufReader},
     process::Command,
@@ -18,8 +18,6 @@ use crate::features::status_bar::StatusBarMessage;
 pub(super) fn cava_subscription() -> Subscription<StatusBarMessage> {
     Subscription::run_with(0xCD, |_| {
         let mut command = Command::new("cava");
-        command.args(["-p", "/home/dcxo/nixos/dotfiles/quickshell/cava-config"]);
-
         command.stdout(Stdio::piped());
 
         let mut child = command.spawn().expect("Could not run CAVA");
@@ -28,18 +26,21 @@ pub(super) fn cava_subscription() -> Subscription<StatusBarMessage> {
             .take()
             .expect("Child did not have a handle to stdout");
 
-        let reader = BufReader::new(stdout).lines();
+        let mut reader = BufReader::new(stdout).lines();
 
-        reader
-            .filter_map(Result::ok)
-            .map(|line: String| {
-                line.split(';')
-                    .filter_map(|s| s.parse().ok())
+        channel(5, async move |mut sender| {
+            while let Some(Ok(line)) = reader.next().await {
+                let line = line
+                    .split(';')
+                    .filter_map(|i| i.parse().ok())
                     .map(|f: f32| f / 1000.)
-                    .collect::<_>()
-            })
-            .skip_while(|v: &Vec<f32>| v.iter().all(|f| *f == 0.))
-            .map(StatusBarMessage::CavaInfo)
+                    .collect::<Vec<_>>();
+
+                if line.iter().any(|f| *f != 0.) {
+                    sender.send(StatusBarMessage::CavaInfo(line)).await.unwrap();
+                }
+            }
+        })
     })
 }
 

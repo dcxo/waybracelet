@@ -1,7 +1,7 @@
 #![warn(unused_extern_crates)]
 #![allow(mismatched_lifetime_syntaxes)]
 
-use std::iter;
+use std::{fs::File, iter};
 
 use hyprland::{data::Monitors, shared::HyprData};
 use iced::{
@@ -17,6 +17,8 @@ use iced_layershell::{
     to_layer_message,
 };
 use iced_wayland_subscriber::{OutputInfo, WaylandEvent};
+use tracing::Level;
+use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use wayland_client::Connection;
 
 use crate::{
@@ -37,7 +39,15 @@ mod styles;
 mod windows;
 
 fn main() {
-    tracing_subscriber::fmt::init();
+    let file = File::create("/home/dcxo/debug.wb.log").unwrap();
+    let log = fmt::layer()
+        .with_writer(file)
+        .with_filter(EnvFilter::from("info,iced_layershell=warn,calloop=warn"));
+
+    tracing_subscriber::registry()
+        .with(fmt::layer().with_filter(EnvFilter::from_default_env()))
+        .with(log)
+        .init();
 
     let conn = Connection::connect_to_env().unwrap();
     let conn2 = conn.clone();
