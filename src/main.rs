@@ -18,6 +18,7 @@ use iced_layershell::{
 };
 use iced_wayland_subscriber::{OutputInfo, WaylandEvent};
 use tracing::Level;
+use tracing_panic::panic_hook;
 use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use wayland_client::Connection;
 
@@ -39,6 +40,8 @@ mod styles;
 mod windows;
 
 fn main() {
+    std::panic::set_hook(Box::new(panic_hook));
+
     let file = File::create("/home/dcxo/debug.wb.log").unwrap();
     let log = fmt::layer()
         .with_writer(file)
