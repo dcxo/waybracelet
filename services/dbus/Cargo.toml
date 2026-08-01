@@ -1,0 +1,10 @@
+[package]
+name = "wb-dbus"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+zbus = "5.19.0"
+futures-channel = "0.3.33"
+futures-lite = "2.6.1"
+smol = { workspace = true }

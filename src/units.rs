@@ -1,0 +1,13 @@
+pub const STROKE_WIDTH: f32 = 4.0;
+pub const NOTIFICATION_WIDTH: f32 = 550.0;
+
+pub const DESIGN_UNIT: f32 = 24.0;
+pub const MARGIN: f32 = STROKE_WIDTH * 1.5;
+pub const CORNER_RADIUS: f32 = DESIGN_UNIT;
+pub const INNER_CORNER_RADIUS: f32 = CORNER_RADIUS - MARGIN;
+pub const STATUS_BAR_HEIGHT: f32 = DESIGN_UNIT * 2.0;
+
+pub const SCREEN_WIDTH: i32 = 2560;
+pub const SCREEN_HEIGHT: i32 = 1440;
+
+pub const PILL_BUTTON_RADIUS: f32 = 1000.0;
