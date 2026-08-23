@@ -15,7 +15,7 @@ use iced::{
     Length::{Fill, Shrink},
     Point, Task,
     font::Weight,
-    widget::{Button, button, canvas, container, image, row, space, svg, text},
+    widget::{Button, button, canvas, image, row, space, svg, text},
 };
 use iced_exwlshell::reexport::{
     Anchor, BlurOption, KeyboardInteractivity, Layer, LayerSize, NewLayerShellSettings,
@@ -124,7 +124,7 @@ impl ShellWindow for StatusBar {
                 .height(units::STATUS_BAR_HEIGHT)
                 .into()
             } else {
-                ring(space()).into()
+                ring(space().width(units::MARGIN).height(units::MARGIN)).into()
             };
             row = row.push(corner);
             row = row.push(colored_bar::horizontal_fill());
@@ -186,7 +186,7 @@ impl ShellWindow for StatusBar {
                 .height(units::STATUS_BAR_HEIGHT)
                 .into()
             } else {
-                ring(space()).into()
+                ring(space().width(units::MARGIN).height(units::MARGIN)).into()
             };
             row = row.push(corner);
 

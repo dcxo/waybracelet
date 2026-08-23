@@ -23,7 +23,6 @@ iced = { version = "0.14.0", default-features = false, features = [
 ] }
 iced_exwlshell = { git = "https://github.com/waycrate/exwlshelleventloop.git" }
 system_shutdown = "4.1.0"
-chrono = "0.4"
 imap = { path = "services/imap" }
 wb-dbus = { path = "services/dbus" }
 lucide-icons = { version = "1.28.0", features = ["iced"] }
@@ -35,7 +34,6 @@ sled = "0.34.7"
 dirs = "6.0.0"
 mothscheme = { git = "https://codeberg.org/dcxo/mothscheme", features = ["iced"] }
 smol = { workspace = true }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 signalfut = "0.1.1"
 bitflags = "2.13.1"
+chrono = "0.4.45"

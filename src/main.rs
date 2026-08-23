@@ -89,22 +89,6 @@ impl Message {
 }
 
 fn main() {
-    let log_file = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(std::env::temp_dir().join("waybracelet.log"))
-        .expect("failed to open log file");
-
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("error")),
-        )
-        .with_target(true)
-        .with_writer(log_file)
-        .init();
-
-    tracing::info!("waybracelet starting");
     daemon(Daemon::new, "waybracelet", Daemon::update, Daemon::view)
         .settings(iced_exwlshell::Settings {
             antialiasing: true,
