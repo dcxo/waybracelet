@@ -24,14 +24,14 @@ pub fn horizontal<'a, Message: 'a>(
 ) -> container::Container<'a, Message> {
     container(space())
         .width(Length::Fixed(width))
-        .height(Length::Fixed(stroke_width))
+        .height(stroke_width)
         .style(colored_bar_style)
 }
 
-pub fn horizontal_fill<'a, Message: 'a>(stroke_width: f32) -> container::Container<'a, Message> {
+pub fn horizontal_fill<'a, Message: 'a>() -> container::Container<'a, Message> {
     container(space())
         .width(Fill)
-        .height(Length::Fixed(stroke_width))
+        .height(units::STROKE_WIDTH)
         .style(colored_bar_style)
 }
 
@@ -40,14 +40,14 @@ pub fn vertical<'a, Message: 'a>(
     height: f32,
 ) -> container::Container<'a, Message> {
     container(space())
-        .width(Length::Fixed(stroke_width))
-        .height(Length::Fixed(height))
+        .width(stroke_width)
+        .height(height)
         .style(colored_bar_style)
 }
 
 pub fn vertical_fill<'a, Message: 'a>(stroke_width: f32) -> container::Container<'a, Message> {
     container(space())
-        .width(Length::Fixed(stroke_width))
+        .width(stroke_width)
         .height(Fill)
         .style(colored_bar_style)
 }

@@ -1,4 +1,5 @@
 use iced::Color;
+use iced::Font;
 use iced::Size;
 use iced::Subscription;
 use iced::futures::SinkExt;
@@ -6,7 +7,7 @@ use iced::keyboard::Key;
 use iced::keyboard::key;
 use iced::time::Instant;
 use iced::window::Id;
-use iced_layershell::{
+use iced_exwlshell::{
     daemon,
     settings::{LayerShellSettings, StartMode},
     to_layer_message,
@@ -31,7 +32,7 @@ use daemon::Daemon;
 
 use crate::windows::shell_window::Kind;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WeLeavingMessage {
     Off,
     Reboot,
@@ -61,6 +62,7 @@ pub enum Message {
     Exec(Vec<String>),
     // LEAVING
     LeaveAction(WeLeavingMessage),
+    Deconfirm,
     // NOTIFICATION
     NotificationServer(NotificationsCommand),
     CloseNotification(u32),
@@ -104,7 +106,7 @@ fn main() {
 
     tracing::info!("waybracelet starting");
     daemon(Daemon::new, "waybracelet", Daemon::update, Daemon::view)
-        .settings(iced_layershell::Settings {
+        .settings(iced_exwlshell::Settings {
             antialiasing: true,
             fonts: vec![LUCIDE_FONT_BYTES.into()],
             ..Default::default()
@@ -128,6 +130,7 @@ fn main() {
             background_color: Color::TRANSPARENT,
             text_color: Color::WHITE,
         })
+        .default_font(Font::with_name("IBM Plex Serif"))
         .subscription(|daemon| {
             iced::Subscription::batch([
                 if daemon.is_animating() {

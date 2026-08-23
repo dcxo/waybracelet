@@ -1,7 +1,7 @@
 use iced::Element;
 use iced::Task;
 use iced::window;
-use iced_layershell::reexport::NewLayerShellSettings;
+use iced_exwlshell::reexport::NewLayerShellSettings;
 
 use crate::Message;
 

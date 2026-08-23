@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use iced::{
     Border, Element,
     Length::Fill,
@@ -5,22 +7,26 @@ use iced::{
     border::Radius,
     widget::{Button, button, container, grid, mouse_area},
 };
-use iced_layershell::reexport::{
+use iced_exwlshell::reexport::{
     Anchor, BlurOption, KeyboardInteractivity, LayerSize, NewLayerShellSettings,
 };
 use lucide_icons::iced::{
     icon_lock, icon_log_out, icon_moon, icon_power, icon_rotate_ccw, icon_snowflake,
 };
+use smol::Timer;
 
 use crate::{Message, WeLeavingMessage, units, windows::shell_window::ShellWindow};
 
-pub struct WeLeaving;
+#[derive(Default)]
+pub struct WeLeaving {
+    confirmed: bool,
+}
 
 impl ShellWindow for WeLeaving {
     fn layer_shell_settings(&self) -> NewLayerShellSettings {
         NewLayerShellSettings {
             size: LayerSize::FILL,
-            layer: iced_layershell::reexport::Layer::Overlay,
+            layer: iced_exwlshell::reexport::Layer::Overlay,
             anchor: Anchor::all(),
             exclusive_zone: Some(0),
             margin: Some((
@@ -30,7 +36,7 @@ impl ShellWindow for WeLeaving {
                 -(units::DESIGN_UNIT as i32),
             )),
             keyboard_interactivity: KeyboardInteractivity::Exclusive,
-            output_option: iced_layershell::reexport::OutputOption::Active,
+            output_option: iced_exwlshell::reexport::OutputOption::Active,
             events_transparent: false,
             blur_option: BlurOption::None,
             namespace: Some("Leave".to_string()),
@@ -42,7 +48,15 @@ impl ShellWindow for WeLeaving {
             Message::LeaveAction(msg) => {
                 match msg {
                     WeLeavingMessage::Off => {
-                        let _ = system_shutdown::shutdown();
+                        if self.confirmed {
+                            let _ = system_shutdown::shutdown();
+                        } else {
+                            self.confirmed = true;
+                            return Task::perform(
+                                async { Timer::after(Duration::from_secs(5)).await },
+                                |_| Message::Deconfirm,
+                            );
+                        }
                     }
                     WeLeavingMessage::Reboot => {
                         let _ = system_shutdown::reboot();
@@ -58,6 +72,9 @@ impl ShellWindow for WeLeaving {
                         let _ = system_shutdown::hibernate();
                     }
                 };
+            }
+            Message::Deconfirm => {
+                self.confirmed = false;
             }
             Message::EscapePressed => {
                 return Task::done(Message::Close(id));
@@ -105,7 +122,13 @@ impl ShellWindow for WeLeaving {
         .enumerate()
         .map(|(idx, (icon, color, message))| {
             leaving_button(
-                icon.size(64).color(color),
+                icon.size(64)
+                    .color(if self.confirmed && message == WeLeavingMessage::Off {
+                        mothscheme::BOMBYX.text
+                    } else {
+                        color
+                    }),
+                self.confirmed,
                 Message::LeaveAction(message),
                 idx as u8,
             )
@@ -151,8 +174,9 @@ impl ShellWindow for WeLeaving {
     }
 }
 
-fn leaving_button<'a, Message: 'a>(
+fn leaving_button<'a>(
     content: impl Into<Element<'a, Message>>,
+    confirmed: bool,
     message: Message,
     idx: u8,
 ) -> Button<'a, Message> {
@@ -165,25 +189,30 @@ fn leaving_button<'a, Message: 'a>(
         }
         _ => Radius::default(),
     };
-
+    let is_off = matches!(message, Message::LeaveAction(WeLeavingMessage::Off));
     button(container(content).center(Fill))
-        .style(move |theme, status| {
-            let style = button::Style {
-                background: None,
-                text_color: theme.palette().text,
-                border: Border::default()
-                    .rounded(radius)
-                    .color(theme.palette().background),
-                shadow: Shadow::default(),
-                snap: true,
-            };
+        .style({
+            move |theme, status| {
+                let style = button::Style {
+                    background: None,
+                    text_color: theme.palette().text,
+                    border: Border::default()
+                        .rounded(radius)
+                        .color(theme.palette().background),
+                    shadow: Shadow::default(),
+                    snap: true,
+                };
 
-            style.with_background(match status {
-                button::Status::Active => theme.palette().background,
-                button::Status::Hovered => mothscheme::swatches::BACKGROUND_L60,
-                button::Status::Pressed => mothscheme::swatches::BACKGROUND_L70,
-                button::Status::Disabled => mothscheme::swatches::BACKGROUNDW_L25,
-            })
+                style.with_background(match status {
+                    button::Status::Active if confirmed && is_off => mothscheme::swatches::RED_L40,
+                    button::Status::Active => theme.palette().background,
+                    button::Status::Hovered if confirmed && is_off => mothscheme::swatches::RED_L60,
+                    button::Status::Hovered => mothscheme::swatches::BACKGROUND_L60,
+                    button::Status::Pressed if confirmed && is_off => mothscheme::swatches::RED_L70,
+                    button::Status::Pressed => mothscheme::swatches::BACKGROUND_L70,
+                    button::Status::Disabled => mothscheme::swatches::BACKGROUNDW_L25,
+                })
+            }
         })
         .on_press(message)
 }

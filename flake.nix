@@ -40,7 +40,7 @@
             cargoLock = {
               lockFile = ./Cargo.lock;
               outputHashes = {
-                "iced_exdevtools-0.19.1" = "sha256-d6ZqbOId+lr8kIL8t41CzdoVhVxmzA4vHU2Z+HkChSc=";
+                "iced_exdevtools-0.19.1" = "sha256-39ha/5Kjot8DEJEZtsCocQoa7+gFt/EOymZMJmWeV5M=";
                 "mothscheme-0.1.0" = "sha256-UWIyKWAU4Ierlxj5jOa9OnwLVPBCbCY7IsNCFaCj+Js=";
               };
             };

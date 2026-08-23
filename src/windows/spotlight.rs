@@ -15,7 +15,7 @@ use iced::{
     futures::lock::MutexGuard,
     widget::{button, column, row, scrollable, sensor, space, text, text_input},
 };
-use iced_layershell::{
+use iced_exwlshell::{
     actions::ActionCallback,
     reexport::{Anchor, BlurOption, KeyboardInteractivity, Layer, OutputOption},
     settings::LayerSize,
@@ -59,8 +59,8 @@ impl SpotLight {
 }
 
 impl ShellWindow for SpotLight {
-    fn layer_shell_settings(&self) -> iced_layershell::reexport::NewLayerShellSettings {
-        iced_layershell::reexport::NewLayerShellSettings {
+    fn layer_shell_settings(&self) -> iced_exwlshell::reexport::NewLayerShellSettings {
+        iced_exwlshell::reexport::NewLayerShellSettings {
             size: LayerSize::px(700, 500),
             layer: Layer::Overlay,
             anchor: Anchor::empty(),

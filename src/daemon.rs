@@ -8,7 +8,7 @@ use crate::{
         notifications::Notifications,
         shell_window::{Kind, ShellWindow, Window},
         spotlight::SpotLight,
-        status_bar::StatusBar,
+        status_bar::{StatusBar, StatusBarComponents},
     },
 };
 use iced::widget::space;
@@ -27,6 +27,14 @@ impl Daemon {
         tasks.push(task);
         let mut windows = vec![window];
 
+        let mut status_bar = StatusBar::new();
+        status_bar.monitor = "DP-1".to_string();
+        status_bar.components = StatusBarComponents::TIME;
+        status_bar.is_main = false;
+        let (window, task) = status_bar.open();
+        tasks.push(task);
+        windows.push(window);
+
         for pos in [Position::Left, Position::Right, Position::Bottom] {
             let eb = EdgeBar::new(pos);
             let (window, task) = eb.open();
@@ -35,8 +43,7 @@ impl Daemon {
         }
 
         let spotlight = SpotLight::new();
-        let (window, task) = spotlight.open();
-        // tasks.push(task);
+        let (window, _) = spotlight.open();
         windows.push(window);
 
         (Daemon { windows }, Task::batch(tasks))
@@ -65,7 +72,7 @@ impl Daemon {
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::OpenLeaving => {
-                let (window, task) = WeLeaving.open();
+                let (window, task) = WeLeaving::default().open();
 
                 self.windows.push(window);
 

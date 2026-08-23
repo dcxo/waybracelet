@@ -13,8 +13,8 @@ use iced::{
     alignment::Vertical::Bottom,
     widget::{button, column, float, keyed, mouse_area, row, sensor, space, text},
 };
-use iced_layershell::actions::ActionCallback;
-use iced_layershell::reexport::{Anchor, BlurOption, KeyboardInteractivity, LayerSize};
+use iced_exwlshell::actions::ActionCallback;
+use iced_exwlshell::reexport::{Anchor, BlurOption, KeyboardInteractivity, LayerSize};
 use lucide_icons::iced::icon_x;
 use wb_dbus::SignalEmitter;
 use wb_dbus::notifications::{Notification, NotificationServerSignals};
@@ -85,10 +85,10 @@ impl Notifications {
 }
 
 impl ShellWindow for Notifications {
-    fn layer_shell_settings(&self) -> iced_layershell::reexport::NewLayerShellSettings {
-        iced_layershell::reexport::NewLayerShellSettings {
+    fn layer_shell_settings(&self) -> iced_exwlshell::reexport::NewLayerShellSettings {
+        iced_exwlshell::reexport::NewLayerShellSettings {
             size: LayerSize::fill_height(units::NOTIFICATION_WIDTH as u32),
-            layer: iced_layershell::reexport::Layer::Top,
+            layer: iced_exwlshell::reexport::Layer::Top,
             anchor: Anchor::Top | Anchor::Bottom | Anchor::Right,
             exclusive_zone: None,
             margin: Some((
@@ -98,7 +98,7 @@ impl ShellWindow for Notifications {
                 units::MARGIN as i32,
             )),
             keyboard_interactivity: KeyboardInteractivity::None,
-            output_option: iced_layershell::reexport::OutputOption::OutputName("DP-3".to_string()),
+            output_option: iced_exwlshell::reexport::OutputOption::OutputName("DP-3".to_string()),
             events_transparent: true,
             blur_option: BlurOption::None,
             namespace: Some("Notifications".to_string()),

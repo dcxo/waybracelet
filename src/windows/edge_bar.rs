@@ -5,7 +5,7 @@ use crate::{Message, units};
 use iced::Alignment::Center;
 use iced::widget::row;
 use iced::{Element, Length::Fill, Task, widget::column};
-use iced_layershell::reexport::{
+use iced_exwlshell::reexport::{
     Anchor, BlurOption, KeyboardInteractivity, Layer, LayerSize, NewLayerShellSettings,
     OutputOption,
 };
@@ -65,10 +65,7 @@ impl ShellWindow for EdgeBar {
 
     fn view(&self, _: iced::window::Id) -> Element<'_, Message> {
         match self.position {
-            Position::Bottom => row![horizontal_fill(units::STROKE_WIDTH)]
-                .height(Fill)
-                .align_y(Center)
-                .into(),
+            Position::Bottom => row![horizontal_fill()].height(Fill).align_y(Center).into(),
             Position::Left | Position::Right => column![
                 vertical_fill(units::STROKE_WIDTH),
                 match self.position {
