@@ -1,5 +1,3 @@
-use std::{iter::once, ops::IndexMut};
-
 use crate::{
     Message,
     windows::{
@@ -13,40 +11,25 @@ use crate::{
 };
 use iced::widget::space;
 use iced::{Element, Task, window};
+use iced_exwlshell::shell::ShellReceiver;
 
 pub struct Daemon {
     windows: Vec<Window>,
+    pub shell_events: ShellReceiver,
 }
 
 impl Daemon {
-    pub fn new() -> (Self, Task<Message>) {
-        let mut tasks: Vec<Task<Message>> = Vec::new();
-
-        let status_bar = StatusBar::new();
-        let (window, task) = status_bar.open();
-        tasks.push(task);
-        let mut windows = vec![window];
-
-        let mut status_bar = StatusBar::new();
-        status_bar.monitor = "DP-1".to_string();
-        status_bar.components = StatusBarComponents::TIME;
-        status_bar.is_main = false;
-        let (window, task) = status_bar.open();
-        tasks.push(task);
-        windows.push(window);
-
-        for pos in [Position::Left, Position::Right, Position::Bottom] {
-            let eb = EdgeBar::new(pos);
-            let (window, task) = eb.open();
-            tasks.push(task);
-            windows.push(window);
-        }
+    pub fn new(shell_events: ShellReceiver) -> Self {
+        let mut windows: Vec<Window> = Vec::new();
 
         let spotlight = SpotLight::new();
         let (window, _) = spotlight.open();
         windows.push(window);
 
-        (Daemon { windows }, Task::batch(tasks))
+        Daemon {
+            windows,
+            shell_events,
+        }
     }
 
     fn open_if_absent(&mut self, kind: Kind) -> Task<Message> {
@@ -98,6 +81,51 @@ impl Daemon {
                         settings: spotlight.layer_shell_settings(),
                         id: spotlight.id,
                     });
+                }
+
+                Task::none()
+            }
+            Message::WayEvent(iced_exwlshell::shell::ShellEvent::OutputAdded(output)) => {
+                println!("OUTPUT ADDED: {:#?}", output);
+                let mut tasks = Vec::new();
+                let mut windows = Vec::new();
+
+                let mut status_bar = StatusBar::new(output.name.unwrap_or_default());
+                if output.location == (0, 0) {
+                    let (window, task) = status_bar.open();
+                    tasks.push(task);
+                    windows.push(window);
+                    for pos in [Position::Left, Position::Right, Position::Bottom] {
+                        let eb = EdgeBar::new(pos);
+                        let (window, task) = eb.open();
+                        tasks.push(task);
+                        windows.push(window);
+                    }
+                } else {
+                    status_bar.components = StatusBarComponents::TIME;
+                    status_bar.is_main = false;
+                    let (window, task) = status_bar.open();
+                    tasks.push(task);
+                    windows.push(window);
+                }
+
+                self.windows.extend(windows);
+
+                Task::batch(tasks)
+            }
+            // Message::WayEvent(iced_exwlshell::shell::ShellEvent::OutputUpdated(output)) => {
+            //     println!("OUTPUT UPDATED: {:#?}", output);
+            //     Task::none()
+            // }
+            Message::WayEvent(iced_exwlshell::shell::ShellEvent::OutputRemoved(output)) => {
+                println!("OUTPUT REMOVED: {:#?}", output);
+                if let Some(monitor) = output.name {
+                    let extract = self.windows.extract_if(.., |window| {
+                        window.monitor_related().is_some_and(|rmon| rmon == monitor)
+                    });
+                    return Task::batch(
+                        extract.map(|to_remove| Task::done(Message::RemoveWindow(to_remove.id))),
+                    );
                 }
 
                 Task::none()

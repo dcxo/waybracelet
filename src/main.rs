@@ -51,6 +51,7 @@ pub enum Message {
     Close(Id),
     CloseByKind(Kind),
     EscapePressed,
+    WayEvent(iced_wayland_subscriber::shell::ShellEvent),
 
     // STATUSBAR
     TrayServer(WatcherCommand),
@@ -89,69 +90,78 @@ impl Message {
 }
 
 fn main() {
-    daemon(Daemon::new, "waybracelet", Daemon::update, Daemon::view)
-        .settings(iced_exwlshell::Settings {
-            antialiasing: true,
-            fonts: vec![LUCIDE_FONT_BYTES.into()],
-            ..Default::default()
-        })
-        .layer_settings(LayerShellSettings {
+    let (shell_broadcast, shell_events) = iced_wayland_subscriber::shell::channel();
+
+    daemon(
+        move || Daemon::new(shell_events.clone()),
+        "waybracelet",
+        Daemon::update,
+        Daemon::view,
+    )
+    .settings(iced_exwlshell::Settings {
+        antialiasing: true,
+        fonts: vec![LUCIDE_FONT_BYTES.into()],
+        shell_broadcast,
+        layer_settings: LayerShellSettings {
             start_mode: StartMode::Background,
             ..Default::default()
-        })
-        .theme(iced::Theme::custom(
-            "mothscheme-styx",
-            iced::theme::Palette {
-                background: theme::OVERLAY,
-                text: theme::TEXT,
-                primary: theme::BLUE,
-                success: theme::GREEN,
-                warning: theme::YELLOW,
-                danger: theme::RED,
+        },
+        ..Default::default()
+    })
+    .theme(iced::Theme::custom(
+        "mothscheme-styx",
+        iced::theme::Palette {
+            background: theme::OVERLAY,
+            text: theme::TEXT,
+            primary: theme::BLUE,
+            success: theme::GREEN,
+            warning: theme::YELLOW,
+            danger: theme::RED,
+        },
+    ))
+    .style(|_, _| iced::theme::Style {
+        background_color: Color::TRANSPARENT,
+        text_color: Color::WHITE,
+    })
+    .default_font(Font::with_name("IBM Plex Serif"))
+    .subscription(|daemon| {
+        iced::Subscription::batch([
+            if daemon.is_animating() {
+                iced::window::frames().map(Message::Tick)
+            } else {
+                Subscription::none()
             },
-        ))
-        .style(|_, _| iced::theme::Style {
-            background_color: Color::TRANSPARENT,
-            text_color: Color::WHITE,
-        })
-        .default_font(Font::with_name("IBM Plex Serif"))
-        .subscription(|daemon| {
-            iced::Subscription::batch([
-                if daemon.is_animating() {
-                    iced::window::frames().map(Message::Tick)
-                } else {
-                    Subscription::none()
-                },
-                iced::time::every(TIME_INTERVAL).map(Message::Tick),
-                Subscription::run(|| {
-                    iced::stream::channel(10, |output| {
-                        wb_dbus::notifications::NotificationServer::new(output).run()
-                    })
+            iced::time::every(TIME_INTERVAL).map(Message::Tick),
+            Subscription::run(|| {
+                iced::stream::channel(10, |output| {
+                    wb_dbus::notifications::NotificationServer::new(output).run()
                 })
-                .map(Message::NotificationServer),
-                Subscription::run(|| {
-                    iced::stream::channel(10, |output| {
-                        wb_dbus::sni::StatusNotifierWatcher::new(output).run()
-                    })
+            })
+            .map(Message::NotificationServer),
+            Subscription::run(|| {
+                iced::stream::channel(10, |output| {
+                    wb_dbus::sni::StatusNotifierWatcher::new(output).run()
                 })
-                .map(Message::TrayServer),
-                Subscription::run(|| {
-                    iced::stream::channel(1, async |mut output| {
-                        loop {
-                            SignalFut::new(Signal::SIGUSR1).await;
-                            let _ = output.send(Message::OpenSpotLight).await;
-                        }
-                    })
-                }),
-                iced::keyboard::listen().map(|key| match key {
-                    iced::keyboard::Event::KeyPressed {
-                        key: Key::Named(key::Named::Escape),
-                        ..
-                    } => Message::EscapePressed,
-                    _ => Message::Noop,
-                }),
-            ])
-        })
-        .run()
-        .unwrap();
+            })
+            .map(Message::TrayServer),
+            Subscription::run(|| {
+                iced::stream::channel(1, async |mut output| {
+                    loop {
+                        SignalFut::new(Signal::SIGUSR1).await;
+                        let _ = output.send(Message::OpenSpotLight).await;
+                    }
+                })
+            }),
+            iced::keyboard::listen().map(|key| match key {
+                iced::keyboard::Event::KeyPressed {
+                    key: Key::Named(key::Named::Escape),
+                    ..
+                } => Message::EscapePressed,
+                _ => Message::Noop,
+            }),
+            daemon.shell_events.listen().map(Message::WayEvent),
+        ])
+    })
+    .run()
+    .unwrap();
 }

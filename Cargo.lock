@@ -4910,6 +4910,7 @@ dependencies = [
  "freedesktop-icons",
  "iced",
  "iced_exwlshell",
+ "iced_wayland_subscriber",
  "imap",
  "lucide-icons",
  "meval",

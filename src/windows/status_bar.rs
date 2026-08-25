@@ -41,10 +41,10 @@ bitflags::bitflags! {
 }
 
 impl StatusBar {
-    pub fn new() -> Self {
+    pub fn new(monitor: String) -> Self {
         let time = Local::now().format("%H:%M").to_string();
         StatusBar {
-            monitor: "DP-3".to_string(),
+            monitor,
             is_main: true,
             time,
             tray_icons: Vec::new(),
@@ -54,6 +54,10 @@ impl StatusBar {
 }
 
 impl ShellWindow for StatusBar {
+    fn monitor_related(&self) -> Option<String> {
+        Some(self.monitor.clone())
+    }
+
     fn layer_shell_settings(&self) -> NewLayerShellSettings {
         let horizontal_margin = if self.is_main {
             0

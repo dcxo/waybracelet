@@ -48,6 +48,10 @@ pub trait ShellWindow {
         false
     }
 
+    fn monitor_related(&self) -> Option<String> {
+        None
+    }
+
     fn kind(&self) -> Kind;
 
     fn layer_shell_settings(&self) -> NewLayerShellSettings;
