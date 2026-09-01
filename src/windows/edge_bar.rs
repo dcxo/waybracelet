@@ -1,5 +1,6 @@
 use crate::components::colored_bar::{horizontal_fill, vertical_fill};
 use crate::components::corner_curve::CornerCurve;
+use crate::daemon::Daemon;
 use crate::windows::shell_window::ShellWindow;
 use crate::{Message, units};
 use iced::Alignment::Center;
@@ -63,7 +64,7 @@ impl ShellWindow for EdgeBar {
         Task::none()
     }
 
-    fn view(&self, _: iced::window::Id) -> Element<'_, Message> {
+    fn view(&self, _: iced::window::Id, _: &Daemon) -> Element<'_, Message> {
         match self.position {
             Position::Bottom => row![horizontal_fill()].height(Fill).align_y(Center).into(),
             Position::Left | Position::Right => column![

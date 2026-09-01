@@ -15,7 +15,7 @@ pub fn ring<'a, Message: 'a>(content: impl Into<Element<'a, Message>>) -> Contai
         .padding(units::MARGIN)
 }
 
-pub(crate) fn pill_background_style(theme: &iced::Theme) -> iced_container::Style {
+pub fn pill_background_style(theme: &iced::Theme) -> iced_container::Style {
     iced_container::Style::default()
         .background(theme.palette().background)
         .border(iced::Border::default().rounded(units::INNER_CORNER_RADIUS))

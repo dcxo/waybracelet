@@ -4,6 +4,7 @@ use iced::window;
 use iced_exwlshell::reexport::NewLayerShellSettings;
 
 use crate::Message;
+use crate::daemon::Daemon;
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum Kind {
@@ -56,7 +57,7 @@ pub trait ShellWindow {
 
     fn layer_shell_settings(&self) -> NewLayerShellSettings;
     fn update(&mut self, id: iced::window::Id, msg: &Message) -> Task<Message>;
-    fn view(&self, id: iced::window::Id) -> Element<'_, Message>;
+    fn view<'a>(&'a self, id: iced::window::Id, daemon: &'a Daemon) -> Element<'a, Message>;
 }
 
 impl ShellWindow for Window {
@@ -72,8 +73,8 @@ impl ShellWindow for Window {
         self.inner.update(id, msg)
     }
 
-    fn view(&self, id: iced::window::Id) -> Element<'_, Message> {
-        self.inner.view(id)
+    fn view<'a>(&'a self, id: iced::window::Id, daemon: &'a Daemon) -> Element<'a, Message> {
+        self.inner.view(id, daemon)
     }
 
     fn is_animating(&self) -> bool {

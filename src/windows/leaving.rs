@@ -15,7 +15,7 @@ use lucide_icons::iced::{
 };
 use smol::Timer;
 
-use crate::{Message, WeLeavingMessage, units, windows::shell_window::ShellWindow};
+use crate::{Message, WeLeavingMessage, daemon::Daemon, units, windows::shell_window::ShellWindow};
 
 #[derive(Default)]
 pub struct WeLeaving {
@@ -85,7 +85,7 @@ impl ShellWindow for WeLeaving {
         Task::none()
     }
 
-    fn view(&self, id: iced::window::Id) -> iced::Element<'_, Message> {
+    fn view(&self, id: iced::window::Id, _: &Daemon) -> iced::Element<'_, Message> {
         let buttons = [
             (
                 icon_log_out(),

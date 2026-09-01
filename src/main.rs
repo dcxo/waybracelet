@@ -1,29 +1,24 @@
-use iced::Color;
-use iced::Font;
-use iced::Size;
-use iced::Subscription;
-use iced::futures::SinkExt;
-use iced::keyboard::Key;
-use iced::keyboard::key;
-use iced::time::Instant;
-use iced::window::Id;
+use std::time::Duration;
+
+use iced::{
+    Size, Subscription,
+    keyboard::{Key, key},
+    time::Instant,
+    window::Id,
+};
 use iced_exwlshell::{
     daemon,
     settings::{LayerShellSettings, StartMode},
     to_layer_message,
 };
 use lucide_icons::LUCIDE_FONT_BYTES;
-use mothscheme::themes::styx as theme;
-use signalfut::Signal;
-use signalfut::SignalFut;
-use std::time::Duration;
-use wb_dbus::notifications::NotificationsCommand;
-use wb_dbus::sni::StatusNotifierItemProxy;
-use wb_dbus::sni::WatcherCommand;
+use waybracelet::{components, theme, units};
+use wb_dbus::{
+    notifications::NotificationsCommand,
+    sni::{StatusNotifierItemProxy, WatcherCommand},
+};
 
-mod components;
 mod daemon;
-mod units;
 mod windows;
 
 const TIME_INTERVAL: Duration = Duration::from_secs(20);
@@ -108,22 +103,9 @@ fn main() {
         },
         ..Default::default()
     })
-    .theme(iced::Theme::custom(
-        "mothscheme-styx",
-        iced::theme::Palette {
-            background: theme::OVERLAY,
-            text: theme::TEXT,
-            primary: theme::BLUE,
-            success: theme::GREEN,
-            warning: theme::YELLOW,
-            danger: theme::RED,
-        },
-    ))
-    .style(|_, _| iced::theme::Style {
-        background_color: Color::TRANSPARENT,
-        text_color: Color::WHITE,
-    })
-    .default_font(Font::with_name("IBM Plex Serif"))
+    .theme(theme::styx())
+    .style(|_, _| theme::transparent_style())
+    .default_font(theme::DEFAULT_FONT)
     .subscription(|daemon| {
         iced::Subscription::batch([
             if daemon.is_animating() {
@@ -144,14 +126,6 @@ fn main() {
                 })
             })
             .map(Message::TrayServer),
-            Subscription::run(|| {
-                iced::stream::channel(1, async |mut output| {
-                    loop {
-                        SignalFut::new(Signal::SIGUSR1).await;
-                        let _ = output.send(Message::OpenSpotLight).await;
-                    }
-                })
-            }),
             iced::keyboard::listen().map(|key| match key {
                 iced::keyboard::Event::KeyPressed {
                     key: Key::Named(key::Named::Escape),

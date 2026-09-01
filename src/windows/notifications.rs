@@ -20,6 +20,7 @@ use wb_dbus::SignalEmitter;
 use wb_dbus::notifications::{Notification, NotificationServerSignals};
 
 use crate::Message;
+use crate::daemon::Daemon;
 use crate::{
     components::canvas_background::{pill_background_style, ring},
     units,
@@ -249,7 +250,7 @@ impl ShellWindow for Notifications {
         }
     }
 
-    fn view(&self, id: iced::window::Id) -> iced::Element<'_, Message> {
+    fn view(&self, id: iced::window::Id, _: &Daemon) -> iced::Element<'_, Message> {
         let max_alpha = self
             .notifications
             .iter()

@@ -1,5 +1,5 @@
 [workspace]
-members = ["services/*"]
+members = ["services/*", "shells/*"]
 
 [package]
 name = "waybracelet"
@@ -7,9 +7,8 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace.dependencies]
+chrono = { version = "0.4.45", features = ["rkyv"] }
 smol = "2.0.2"
-
-[dependencies]
 iced = { version = "0.14.0", default-features = false, features = [
   "wayland",
   "thread-pool",
@@ -21,20 +20,37 @@ iced = { version = "0.14.0", default-features = false, features = [
   "lazy",
   "svg",
 ] }
-iced_exwlshell = { git = "https://github.com/waycrate/exwlshelleventloop.git" }
-iced_wayland_subscriber = { git = "https://github.com/waycrate/exwlshelleventloop.git" }
-system_shutdown = "4.1.0"
+iced_exwlshell = "0.20.0"
+iced_wayland_subscriber = "0.20.0"
+freedesktop-icons = "0.4.0"
+thiserror = "2.0.20"
+mothscheme = { git = "https://codeberg.org/dcxo/mothscheme", features = [
+  "iced",
+] }
+[dependencies]
+iced = { workspace = true }
+iced_exwlshell = { workspace = true }
+iced_wayland_subscriber = { workspace = true }
+smol = { workspace = true }
+
 imap = { path = "services/imap" }
 wb-dbus = { path = "services/dbus" }
+
+mothscheme = { workspace = true }
 lucide-icons = { version = "1.28.0", features = ["iced"] }
+system_shutdown = "4.1.0"
+chrono = { workspace = true }
+freedesktop-icons = { workspace = true }
+bitflags = "2.13.1"
 meval = "0.2.0"
 freedesktop-desktop-entry = "0.8.1"
 strsim = "0.11.1"
-freedesktop-icons = "0.4.0"
 sled = "0.34.7"
 dirs = "6.0.0"
-mothscheme = { git = "https://codeberg.org/dcxo/mothscheme", features = ["iced"] }
-smol = { workspace = true }
-signalfut = "0.1.1"
-bitflags = "2.13.1"
-chrono = "0.4.45"
+
+[profile.release]
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = 'abort'
+strip = true

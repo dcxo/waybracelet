@@ -1,8 +1,6 @@
 use core::convert::Into;
 use std::{
     borrow::Cow,
-    os::unix::process::CommandExt,
-    path::PathBuf,
     process::{Command, Stdio},
 };
 
@@ -12,8 +10,7 @@ use iced::{
     Length::{Fill, Shrink},
     Task, Theme,
     border::Radius,
-    futures::lock::MutexGuard,
-    widget::{button, column, row, scrollable, sensor, space, text, text_input},
+    widget::{button, column, scrollable, sensor, space, text, text_input},
 };
 use iced_exwlshell::{
     actions::ActionCallback,
@@ -27,6 +24,7 @@ use crate::{
         canvas_background::{pill, ring},
         colored_bar,
     },
+    daemon::Daemon,
     units,
     windows::shell_window::ShellWindow,
 };
@@ -114,7 +112,7 @@ impl ShellWindow for SpotLight {
         }
     }
 
-    fn view(&self, id: iced::window::Id) -> iced::Element<'_, Message> {
+    fn view(&self, id: iced::window::Id, _: &Daemon) -> iced::Element<'_, Message> {
         let text_input = ring(
             text_input(
                 "Type in here…",

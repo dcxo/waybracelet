@@ -1,0 +1,22 @@
+[package]
+name = "spotlight"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+smol = { workspace = true }
+iced = { workspace = true }
+iced_exwlshell = { workspace = true }
+iced_wayland_subscriber = { workspace = true }
+thiserror = { workspace = true }
+mothscheme = { workspace = true }
+chrono = { workspace = true }
+freedesktop-icons = { workspace = true }
+waybracelet = { path = "../.." }
+
+numfmt = "1.2.0"
+meval = "0.2.0"
+freedesktop-desktop-entry = "0.8.1"
+strsim = "0.11.1"
+dirs = "6.0.0"
+sled = "0.34.7"

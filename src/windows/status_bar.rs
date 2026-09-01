@@ -5,6 +5,7 @@ use crate::{
         colored_bar,
         corner_curve::CornerCurve,
     },
+    daemon::Daemon,
     units,
     windows::shell_window::ShellWindow,
 };
@@ -27,7 +28,7 @@ use wb_dbus::sni::{NewTrayItem, TrayItemIcon, WatcherCommand};
 pub struct StatusBar {
     pub monitor: String,
     time: String,
-    tray_icons: Vec<NewTrayItem>,
+    // tray_icons: Vec<NewTrayItem>,
     pub components: StatusBarComponents,
     pub is_main: bool,
 }
@@ -47,7 +48,6 @@ impl StatusBar {
             monitor,
             is_main: true,
             time,
-            tray_icons: Vec::new(),
             components: StatusBarComponents::all(),
         }
     }
@@ -85,15 +85,6 @@ impl ShellWindow for StatusBar {
                 self.time = Local::now().format("%H:%M").to_string();
                 Task::none()
             }
-            Message::TrayServer(cmd) if self.components.contains(StatusBarComponents::TRAY) => {
-                match cmd {
-                    WatcherCommand::ItemRegistered(new_tray_item) => {
-                        self.tray_icons.push(new_tray_item.clone());
-                        Task::none()
-                    }
-                    WatcherCommand::ItemUnregistered(_) => todo!(),
-                }
-            }
             Message::TrayIconClick(status_notifier_item_proxy) => {
                 let status_notifier_item_proxy = status_notifier_item_proxy.clone();
                 Task::perform(
@@ -107,11 +98,11 @@ impl ShellWindow for StatusBar {
         }
     }
 
-    fn view(&self, _: iced::window::Id) -> Element<'_, Message> {
+    fn view<'a>(&'a self, _: iced::window::Id, daemon: &'a Daemon) -> Element<'a, Message> {
         let left_row = {
             let mut row = row![];
 
-            let corner: Element<'_, Message> = if self.is_main {
+            let corner: Element<'a, Message> = if self.is_main {
                 canvas(CornerCurve::new(
                     Point::new(
                         12.,
@@ -145,8 +136,9 @@ impl ShellWindow for StatusBar {
         let right_row = {
             let mut row = row![colored_bar::horizontal_fill()];
 
-            if self.components.contains(StatusBarComponents::TRAY) && !self.tray_icons.is_empty() {
-                let tray = tray_icons(&self.tray_icons);
+            if self.components.contains(StatusBarComponents::TRAY) && !daemon.tray_icons.is_empty()
+            {
+                let tray = tray_icons(&daemon.tray_icons);
                 row = row.push(tray);
                 row = row.push(colored_bar::h8());
             }

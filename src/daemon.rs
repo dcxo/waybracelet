@@ -12,23 +12,20 @@ use crate::{
 use iced::widget::space;
 use iced::{Element, Task, window};
 use iced_exwlshell::shell::ShellReceiver;
+use wb_dbus::sni::WatcherCommand;
 
 pub struct Daemon {
     windows: Vec<Window>,
     pub shell_events: ShellReceiver,
+    pub(crate) tray_icons: Vec<wb_dbus::sni::NewTrayItem>,
 }
 
 impl Daemon {
     pub fn new(shell_events: ShellReceiver) -> Self {
-        let mut windows: Vec<Window> = Vec::new();
-
-        let spotlight = SpotLight::new();
-        let (window, _) = spotlight.open();
-        windows.push(window);
-
         Daemon {
-            windows,
+            windows: Vec::new(),
             shell_events,
+            tray_icons: Vec::new(),
         }
     }
 
@@ -75,16 +72,16 @@ impl Daemon {
                         .map(Task::done),
                 )
             }
-            Message::OpenSpotLight => {
-                if let Some(spotlight) = self.windows.iter().find(|w| w.kind() == Kind::SpotLight) {
-                    return Task::done(Message::NewLayerShell {
-                        settings: spotlight.layer_shell_settings(),
-                        id: spotlight.id,
-                    });
-                }
+            // Message::OpenSpotLight => {
+            //     if let Some(spotlight) = self.windows.iter().find(|w| w.kind() == Kind::SpotLight) {
+            //         return Task::done(Message::NewLayerShell {
+            //             settings: spotlight.layer_shell_settings(),
+            //             id: spotlight.id,
+            //         });
+            //     }
 
-                Task::none()
-            }
+            //     Task::none()
+            // }
             Message::WayEvent(iced_exwlshell::shell::ShellEvent::OutputAdded(output)) => {
                 println!("OUTPUT ADDED: {:#?}", output);
                 let mut tasks = Vec::new();
@@ -130,11 +127,21 @@ impl Daemon {
 
                 Task::none()
             }
+            Message::TrayServer(cmd) => match cmd {
+                WatcherCommand::ItemRegistered(new_tray_item) => {
+                    self.tray_icons.push(new_tray_item.clone());
+                    Task::none()
+                }
+                WatcherCommand::ItemUnregistered(item) => {
+                    dbg!(item);
+                    Task::none()
+                }
+            },
             msg => {
                 let open_task = if msg.is_notification_related() {
                     self.open_if_absent(Kind::Notification)
-                } else if msg.is_spotlight_related() {
-                    self.open_if_absent(Kind::SpotLight)
+                // } else if msg.is_spotlight_related() {
+                //     self.open_if_absent(Kind::SpotLight)
                 } else {
                     Task::none()
                 };
@@ -152,7 +159,13 @@ impl Daemon {
     pub fn view(&self, id: window::Id) -> Element<'_, Message> {
         self.windows
             .iter()
-            .find_map(|w| if w.id == id { Some(w.view(id)) } else { None })
+            .find_map(|w| {
+                if w.id == id {
+                    Some(w.view(id, self))
+                } else {
+                    None
+                }
+            })
             .unwrap_or_else(|| space().into())
     }
 }
