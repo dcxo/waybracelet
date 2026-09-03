@@ -1,4 +1,10 @@
-use std::{collections::HashMap, fmt::Debug, fs, process::Stdio, time::SystemTime};
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    fs,
+    process::{Command, Stdio},
+    time::SystemTime,
+};
 
 use iced::{
     Alignment::Center,
@@ -12,10 +18,9 @@ use iced_exwlshell::{
     reexport::{Anchor, Layer},
     settings::{LayerShellSettings, LayerSize},
 };
-use smol::process::Command;
 use waybracelet::units;
 
-use crate::{desktop_entries::DesktopEntry, frecency::FrecencyScore};
+use crate::{desktop_entries::DesktopEntry, frecency::FrecencyScore, input_type::InputType};
 
 mod desktop_entries;
 mod frecency;
@@ -52,6 +57,7 @@ fn main() {
 enum SpotLightMessage {
     ChangeInput(String),
     Exec(String),
+    OpenProject(String),
     IcedEvent(iced::Event),
     FocusTextInput,
 }
@@ -105,27 +111,9 @@ impl SpotLight {
     fn update_input(&mut self, new_input: String) -> Task<SpotLightMessage> {
         self.raw_input = new_input;
 
-        if let Some(math) = self.raw_input.strip_prefix('=') {
-            if let Ok(res) = meval::eval_str(math) {
-                self.input = input_type::InputType::Math(res);
-            }
-        } else {
-            let mut ids: Vec<_> = self
-                .all_entries
-                .values()
-                .filter(|de| {
-                    self.raw_input
-                        .chars()
-                        .all(|c| de.title.chars().any(|c2| c.eq_ignore_ascii_case(&c2)))
-                })
-                .map(desktop_entries::DesktopEntry::id)
-                .collect();
-
-            sort_ids_by_frecency(&mut ids, &self.all_entries);
-
-            self.input = input_type::InputType::DesktopEntries(ids)
+        if let Ok(it) = InputType::try_from(&*self) {
+            self.input = it;
         }
-
         Task::none()
     }
 
@@ -140,12 +128,15 @@ impl SpotLight {
                     let exec = &entry.exec;
                     let _ = self.db.insert(&entry.id, &entry.score.to_bytes());
 
-                    Command::new(&exec[0])
-                        .args(&exec[1..])
+                    Command::new("setsid")
+                        .arg("-f")
+                        .args(&exec[..])
                         .stdin(Stdio::null())
                         .stdout(Stdio::null())
                         .stderr(Stdio::null())
                         .spawn()
+                        .unwrap()
+                        .wait()
                         .unwrap();
 
                     return iced::exit();
@@ -154,6 +145,17 @@ impl SpotLight {
                 Task::none()
             }
             SpotLightMessage::IcedEvent(iced::Event::Window(iced::window::Event::Unfocused)) => {
+                iced::exit()
+            }
+            SpotLightMessage::OpenProject(project) => {
+                Command::new("project-opener")
+                    .arg("run")
+                    .arg(&project)
+                    .spawn()
+                    .unwrap()
+                    .wait()
+                    .unwrap();
+
                 iced::exit()
             }
             _ => Task::none(),
